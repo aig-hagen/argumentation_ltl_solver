@@ -7,8 +7,8 @@
 #include "CryptoMiniSatSolver.h"
 typedef CryptoMiniSatSolver SAT_Solver;
 #else
-#include "ExternalSatSolver.h"
-typedef ExternalSatSolver SAT_Solver;
+#include "ExternalLtlSolver.h"
+typedef ExternalLtlSolver SAT_Solver;
 #endif
 
 namespace Encodings {

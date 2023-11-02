@@ -1,6 +1,8 @@
 #ifndef EXTERNAL_LTL_SOLVER_H
 #define EXTERNAL_LTL_SOLVER_H
 
+#include "AF.h"
+
 #include <vector>
 #include <string>
 #include <cstdint>
@@ -19,8 +21,8 @@ public:
     ExternalLtlSolver(uint32_t number_of_vars, std::string path_to_solver);
     void addClause(std::vector<int> & clause);
     int solve();
-    void main();
-    void formula();
+    void main(const AF & af);
+    void formula(const AF & af);
     void forall();
     void exists();
     void free();

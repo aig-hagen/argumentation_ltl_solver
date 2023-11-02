@@ -45,21 +45,44 @@ int ExternalLtlSolver::solve() {
     return 10;
 }
 
-void ExternalLtlSolver::formula() {
+void ExternalLtlSolver::formula(const AF & af) {
     ofstream process;
     process.open("encoding.tmp");
     process << "MODULE formula(";
-    // TODO add variables
+    process << af.accepted_var[0];
+    for (uint32_t i = 1; i < af.args; i++) {
+        process << "," << af.accepted_var[i];
+    }
+    for (uint32_t i = 0; i < af.args; i++) {
+        process << "," << af.rejected_var[i];
+    }
     process << ")\n\nDEFINE\n";
-    // TODO add clauses
+    for (uint32_t c = 0; c < clauses.size(); c++) {
+        auto clause = clauses[c];
+        process << "\tc" << c << " := ";
+        for (uint32_t i = 0; i < clause.size()-1; i++) {
+            process << clause[i];
+            if (i != clause.size() - 2) {
+                process << " | ";
+            }
+        }
+        process << ";\n";
+    }
+    process << "\tsat := ";
+    for (uint32_t c = 0; c < clauses.size(); c++) {
+        process << "c" << c;
+        if (c != clauses.size()-1) process << " & ";
+    }
+    process << ";\n";
     process.close();
 }
 
-void ExternalLtlSolver::main() {
+void ExternalLtlSolver::main(const AF & af) {
     ofstream process;
     process.open("encoding.tmp");
     process << "MODULE main\n\n";
     process << "VAR\n";
+    // TODO add quantifiers
     process << "SPEC AF (!clauses.sat)\n";
     process.close();
 }

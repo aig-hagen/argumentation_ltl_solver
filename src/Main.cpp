@@ -306,7 +306,7 @@ int main(int argc, char ** argv)
 			switch (string_to_sem(task)) {
 				case PR:
 					//skept_accepted = Problems::mt_ds_preferred(af, query);
-					skept_accepted = Problems::mt_ds_preferred(af, query);
+					skept_accepted = Problems::ds_preferred_qbf(af, query);
 					break;
 				default:
 					cerr << argv[0] << ": Unsupported semantics\n";
