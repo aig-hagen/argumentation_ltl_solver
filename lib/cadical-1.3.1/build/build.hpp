@@ -1,0 +1,5 @@
+#define VERSION "1.3.1"
+#define IDENTIFIER "c480a18b0d89ed192a5fb43df142e34b216a93d8"
+#define COMPILER "g++ (GCC) 13.2.1 20230801"
+#define FLAGS "-Wall -Wextra -O3 -DNDEBUG"
+#define DATE "Thu Nov 2 16:04:31 CET 2023 Linux arch 6.5.2-arch1-1 x86_64"
