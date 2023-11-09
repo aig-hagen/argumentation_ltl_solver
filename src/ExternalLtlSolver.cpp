@@ -1,7 +1,8 @@
 #include "ExternalLtlSolver.h"
+#include "Util.h"
+#include "Encodings.h"
 
 #include <iostream>
-#include <fstream>
 
 using namespace std;
 
@@ -31,66 +32,141 @@ void ExternalLtlSolver::addClause(std::vector<int> & clause) {
     clauses[num_clauses-1].push_back(0);
 }
 
-int ExternalLtlSolver::solve() {
+int ExternalLtlSolver::solve(const AF & af, const int arg) {
     ofstream process;
     process.open("encoding.tmp");
-    process << "p cnf " << n_vars << " " << num_clauses << "\n";
-    for(auto const& clause: clauses) {
-        for(const int lit: clause){
-            process << lit << " ";
-        }
-        process << "\n";
-    }
+    exists(process);
+    forall(process);
+    formula(af, arg, process);
+    main(af, process);
     process.close();
+
     return 10;
 }
 
-void ExternalLtlSolver::formula(const AF & af) {
-    ofstream process;
-    process.open("encoding.tmp");
-    process << "MODULE formula(";
-    process << af.accepted_var[0];
-    for (uint32_t i = 1; i < af.args; i++) {
-        process << "," << af.accepted_var[i];
+void ExternalLtlSolver::formula(const AF & af, const int arg, ofstream & process) {
+    process << "\nMODULE formula(";
+    for (uint32_t i = 1; i <= 4*af.args-1; i++) {
+        process << "x" << i << ",";
     }
-    for (uint32_t i = 0; i < af.args; i++) {
-        process << "," << af.rejected_var[i];
-    }
+    process << "x" << 4*af.args;
+
     process << ")\n\nDEFINE\n";
-    for (uint32_t c = 0; c < clauses.size(); c++) {
-        auto clause = clauses[c];
+
+    // ADM Clauses
+    auto adm_clauses = Encodings::add_admissible(af, false);
+    for (uint32_t c = 0; c < adm_clauses.size(); c++) {
+        auto clause = adm_clauses[c];
         process << "\tc" << c << " := ";
-        for (uint32_t i = 0; i < clause.size()-1; i++) {
-            process << clause[i];
-            if (i != clause.size() - 2) {
+        for (uint32_t i = 0; i < clause.size(); i++) {
+            if (clause[i] > 0) {
+                process << "x" << clause[i];
+            } else {
+                process << "!x" << abs(clause[i]);
+            }
+            if (i != clause.size() - 1) {
                 process << " | ";
             }
         }
         process << ";\n";
     }
-    process << "\tsat := ";
-    for (uint32_t c = 0; c < clauses.size(); c++) {
+    process << "\tadm := ";
+    for (uint32_t c = 0; c < adm_clauses.size(); c++) {
         process << "c" << c;
-        if (c != clauses.size()-1) process << " & ";
+        if (c != adm_clauses.size()-1) process << " & ";
     }
     process << ";\n";
-    process.close();
+
+    process << "\tin := !x" << arg << ";\n";
+
+    // ADM clauses - reduct
+    auto adm_clauses_r = Encodings::add_admissible(af, true);
+    for (uint32_t c = 0; c < adm_clauses_r.size(); c++) {
+        auto clause = adm_clauses_r[c];
+        process << "\td" << c << " := ";
+        for (uint32_t i = 0; i < clause.size(); i++) {
+            if (clause[i] > 0) {
+                process << "x" << clause[i];
+            } else {
+                process << "!x" << abs(clause[i]);
+            }
+            if (i != clause.size() - 1) {
+                process << " | ";
+            }
+        }
+        process << ";\n";
+    }
+    process << "\tadmr := ";
+    for (uint32_t c = 0; c < adm_clauses_r.size(); c++) {
+        process << "d" << c;
+        if (c != adm_clauses_r.size()-1) process << " & ";
+    }
+    process << ";\n";
+
+    // Non-empty clause - reduct
+    vector<int> ne_clause = Encodings::add_nonempty(af, true);
+    process << "\tner := ";
+    for (uint32_t i = 0; i < ne_clause.size(); i++) {
+        if (ne_clause[i] > 0) {
+            process << "x" << ne_clause[i];
+        } else {
+            process << "!x" << abs(ne_clause[i]);
+        }
+        if (i != ne_clause.size() - 1) {
+            process << " | ";
+        }
+    }
+    process << ";\n";
+
+    // Reduct clauses
+    auto reduct_clauses = Encodings::add_reduct(af);
+    for (uint32_t c = 0; c < reduct_clauses.size(); c++) {
+        auto clause = reduct_clauses[c];
+        process << "\te" << c << " := ";
+        for (uint32_t i = 0; i < clause.size(); i++) {
+            if (clause[i] > 0) {
+                process << "x" << clause[i];
+            } else {
+                process << "!x" << abs(clause[i]);
+            }
+            if (i != clause.size() - 1) {
+                process << " | ";
+            }
+        }
+        process << ";\n";
+    }
+    process << "\tred := ";
+    for (uint32_t c = 0; c < reduct_clauses.size(); c++) {
+        process << "e" << c;
+        if (c != reduct_clauses.size()-1) process << " & ";
+    }
+    process << ";\n";
+
+    process << "\tsat := adm & in & !admr & !ner & !red;\n";
 }
 
-void ExternalLtlSolver::main(const AF & af) {
-    ofstream process;
-    process.open("encoding.tmp");
-    process << "MODULE main\n\n";
+void ExternalLtlSolver::main(const AF & af, ofstream & process) {
+    process << "\nMODULE main\n\n";
     process << "VAR\n";
-    // TODO add quantifiers
+    process << "\t\tx" << 4*af.args << "\t: forall(clauses.sat);\n";
+    for (int v = 4*af.args-1; v > 2*af.args; v--) {
+        process << "\t\tx" << v << "\t: forall(x" << v+1 << ".carry-out);\n";
+    }
+    process << "\t\tx" << 2*af.args << "\t: exists(x" << 2*af.args+1 << ".carry-out);\n";
+    for (int v = 2*af.args-1; v > 0; v--) {
+        process << "\t\tx" << v << "\t: exists(x" << v+1 << ".carry-out);\n";
+    }
+    process << "clauses\t: formula(";
+    process << "x1";
+    for (int x = 2; x <= 4*af.args; x++) {
+        process << ",x" << x;
+    }
+    process << ");\n";
     process << "SPEC AF (!clauses.sat)\n";
-    process.close();
 }
 
-void ExternalLtlSolver::forall() {
-    ofstream process;
-    process.open("encoding.tmp");
-    process << "MODULE forall(carry-in)\n";
+void ExternalLtlSolver::forall(ofstream & process) {
+    process << "\nMODULE forall(carry-in)\n";
     process << "VAR\n";
     process << "    value : boolean;\n";
     process << "ASSIGN\n";
@@ -98,14 +174,11 @@ void ExternalLtlSolver::forall() {
     process << "    next (value) := value ^ carry-in;\n";
     process << "DEFINE\n";
     process << "    carry-out := value & carry-in;\n";
-    process.close();
 }
 
 
-void ExternalLtlSolver::exists() {
-    ofstream process;
-    process.open("encoding.tmp");
-    process << "MODULE exists(carry-in)\n";
+void ExternalLtlSolver::exists(ofstream & process) {
+    process << "\nMODULE exists(carry-in)\n";
     process << "VAR\n";
     process << "    value : boolean;\n";
     process << "ASSIGN\n";
@@ -116,7 +189,6 @@ void ExternalLtlSolver::exists() {
     process << "        1        : value;\n";
     process << "      esac;\n";
     process << "DEFINE carry-out := carry-in;\n";
-    process.close();
 }
 
 void ExternalLtlSolver::free() {

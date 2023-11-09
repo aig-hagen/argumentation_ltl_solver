@@ -6,6 +6,7 @@
 #include <vector>
 #include <string>
 #include <cstdint>
+#include <fstream>
 
 /*
 */
@@ -20,11 +21,11 @@ public:
 
     ExternalLtlSolver(uint32_t number_of_vars, std::string path_to_solver);
     void addClause(std::vector<int> & clause);
-    int solve();
-    void main(const AF & af);
-    void formula(const AF & af);
-    void forall();
-    void exists();
+    int solve(const AF & af, const int arg);
+    void main(const AF & af, std::ofstream & process);
+    void formula(const AF & af, const int arg, std::ofstream & process);
+    void forall(std::ofstream & process);
+    void exists(std::ofstream & process);
     void free();
     
 };

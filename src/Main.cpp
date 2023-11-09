@@ -203,42 +203,21 @@ int main(int argc, char ** argv)
 	}
 
 	AF af = AF();
-	vector<pair<string,string>> atts;
-	string line, arg, source, target;
-	
-	if (fileformat == "apx") {
-		while (!input.eof()) {
-			getline(input, line);
-			line.erase(remove_if(line.begin(), line.end(), ::isspace), line.end());
-			if (line.length() == 0 || line[0] == '/' || line[0] == '%') continue;
-			if (line.length() < 6) cerr << "Warning: Cannot parse line: " << line << "\n";
-			string op = line.substr(0,3);
-			if (op == "arg") {
-				if (line[3] == '(' && line.find(')') != string::npos) {
-					arg = line.substr(4,line.find(')')-4);
-					af.add_argument(arg);
-				} else {
-					cerr << "Warning: Cannot parse line: " << line << "\n";
-				}
-			} else if (op == "att") {
-				if (line[3] == '(' && line.find(',') != string::npos && line.find(')') != string::npos) {
-					source = line.substr(4,line.find(',')-4);
-					target = line.substr(line.find(',')+1,line.find(')')-line.find(',')-1);
-					atts.push_back(make_pair(source,target));
-				} else {
-					cerr << "Warning: Cannot parse line: " << line << "\n";
-				}
-			} else {
-				cerr << "Warning: Cannot parse line: " << line << "\n";
+	vector<pair<int,int>> atts;
+	string op, type, source, target;
+	int num_args;
+	if (fileformat == "i23") {
+		while (input >> op >> type >> num_args) {
+			if (op[0] == '#') continue;
+			if (op != "p" || type != "af") {
+				cerr << "Warning: Unexpected header: " << op << " " << type << "\n";
 			}
-		}
-	} else if (fileformat == "tgf") {
-		while (input >> arg) {
-			if (arg == "#") break;
-			af.add_argument(arg);
+			af.set_num_arguments(num_args);
+			break;
 		}
 		while (input >> source >> target) {
-			atts.push_back(make_pair(source, target));
+			if (source[0] == '#') continue;
+			af.add_attack(make_pair(stoi(source), stoi(target)));
 		}
 	} else {
 		cerr << argv[0] << ": Unsupported file format\n";
@@ -246,53 +225,7 @@ int main(int argc, char ** argv)
 	}
 
 	input.close();
-
 	af.sem = string_to_sem(task);
-
-#if defined(CONE_OF_INFLUENCE)
-	if (string_to_task(task) == DS) {
-		vector<vector<uint32_t>> attackers;
-		attackers.resize(af.args);
-		for (uint32_t i = 0; i < atts.size(); i++) {
-			attackers[af.arg_to_int[atts[i].second]].push_back(af.arg_to_int[atts[i].first]);
-		}
-
-		vector<uint8_t> visited(af.args, 0);
-		stack<uint32_t> stack;
-		stack.push(af.arg_to_int.at(query));
-		uint32_t arg;
-
-		while (!stack.empty()) {
-			arg = stack.top();
-			stack.pop();
-			if(!visited[arg]) {
-				visited[arg] = 1;
-			}
-			for (uint32_t i = 0; i < attackers[arg].size(); i++) {
-				if (!visited[attackers[arg][i]]) {
-					stack.push(attackers[arg][i]);
-				}
-			}
-		}
-
-		AF new_af = AF();
-		for (uint32_t i = 0; i < af.args; i++) {
-			if (visited[i]) {
-				new_af.add_argument(af.int_to_arg[i]);
-			}
-		}
-		af = move(new_af);
-	}
-#endif
-
-	af.initialize_attackers();
-
-	for (uint32_t i = 0; i < atts.size(); i++) {
-		af.add_attack(atts[i]);
-	}
-
-	af.initialize_vars();
-
 	af.set_solver_path(sat_path);
 
 	switch (string_to_task(task)) {
@@ -306,7 +239,7 @@ int main(int argc, char ** argv)
 			switch (string_to_sem(task)) {
 				case PR:
 					//skept_accepted = Problems::mt_ds_preferred(af, query);
-					skept_accepted = Problems::ds_preferred_qbf(af, query);
+					skept_accepted = Problems::ds_preferred_qbf(af, stoi(query));
 					break;
 				default:
 					cerr << argv[0] << ": Unsupported semantics\n";
