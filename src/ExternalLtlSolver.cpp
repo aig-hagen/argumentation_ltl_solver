@@ -1,5 +1,4 @@
 #include "ExternalLtlSolver.h"
-#include "Util.h"
 #include "Encodings.h"
 
 #include <iostream>

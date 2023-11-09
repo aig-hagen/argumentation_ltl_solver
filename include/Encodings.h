@@ -2,7 +2,6 @@
 #define ENCODINGS_H
 
 #include "AF.h"
-#include "Util.h"
 
 #if defined(SAT_CMSAT)
 #include "CryptoMiniSatSolver.h"

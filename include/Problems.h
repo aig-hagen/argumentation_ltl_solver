@@ -1,7 +1,6 @@
 #ifndef PROBLEMS_H
 #define PROBLEMS_H
 
-#include "Util.h"
 #include "Encodings.h"
 
 namespace Problems {
