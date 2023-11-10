@@ -12,7 +12,7 @@ vector<int> add_nonempty(const AF & af, bool reduct) {
 	}
 	vector<int> clause(af.args);
 	for (int i = 1; i <= af.args; i++) {
-		clause[i] = (base+i);
+		clause[i-1] = (base+i);
 	}
 	return clause;
 }

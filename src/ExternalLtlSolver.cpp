@@ -76,7 +76,7 @@ void ExternalLtlSolver::formula(const AF & af, const int arg, ofstream & process
     }
     process << ";\n";
 
-    process << "\tin := !x" << arg << ";\n";
+    process << "\tin1 := !x" << arg << ";\n";
 
     // ADM clauses - reduct
     auto adm_clauses_r = Encodings::add_admissible(af, true);
@@ -141,7 +141,7 @@ void ExternalLtlSolver::formula(const AF & af, const int arg, ofstream & process
     }
     process << ";\n";
 
-    process << "\tsat := adm & in & !admr & !ner & !red;\n";
+    process << "\tsat := adm & in1 & !admr & !ner & !red;\n";
 }
 
 void ExternalLtlSolver::main(const AF & af, ofstream & process) {
@@ -156,9 +156,9 @@ void ExternalLtlSolver::main(const AF & af, ofstream & process) {
         process << "\t\tx" << v << "\t: exists(x" << v+1 << ".carry-out);\n";
     }
     process << "clauses\t: formula(";
-    process << "x1";
+    process << "x1.value";
     for (int x = 2; x <= 4*af.args; x++) {
-        process << ",x" << x;
+        process << ",x" << x << ".value";
     }
     process << ");\n";
     process << "SPEC AF (!clauses.sat)\n";
@@ -169,8 +169,8 @@ void ExternalLtlSolver::forall(ofstream & process) {
     process << "VAR\n";
     process << "    value : boolean;\n";
     process << "ASSIGN\n";
-    process << "    init (value) := 0;\n";
-    process << "    next (value) := value ^ carry-in;\n";
+    process << "    init (value) := FALSE;\n";
+    process << "    next (value) := value & carry-in;\n";
     process << "DEFINE\n";
     process << "    carry-out := value & carry-in;\n";
 }
@@ -181,11 +181,11 @@ void ExternalLtlSolver::exists(ofstream & process) {
     process << "VAR\n";
     process << "    value : boolean;\n";
     process << "ASSIGN\n";
-    process << "    init (value) := {0,1};\n";
+    process << "    init (value) := {FALSE,TRUE};\n";
     process << "    next (value) :=\n";
     process << "      case\n";
-    process << "        carry-in : {0,1};\n";
-    process << "        1        : value;\n";
+    process << "        carry-in : {FALSE,TRUE};\n";
+    process << "        TRUE     : value;\n";
     process << "      esac;\n";
     process << "DEFINE carry-out := carry-in;\n";
 }
