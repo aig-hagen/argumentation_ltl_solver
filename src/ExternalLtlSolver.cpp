@@ -141,7 +141,7 @@ void ExternalLtlSolver::formula(const AF & af, const int arg, ofstream & process
     }
     process << ";\n";
 
-    process << "\tsat := adm & in1 & !admr & !ner & !red;\n";
+    process << "\tsat := adm & in1 & (!admr | !ner | !red);\n";
 }
 
 void ExternalLtlSolver::main(const AF & af, ofstream & process) {
