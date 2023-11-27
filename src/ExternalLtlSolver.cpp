@@ -69,12 +69,12 @@ void ExternalLtlSolver::formula(const AF & af, const int arg, ofstream & process
         }
         process << ";\n";
     }
-    process << "\tadm := ";
+    process << "\tadm := (";
     for (uint32_t c = 0; c < adm_clauses.size(); c++) {
         process << "c" << c;
         if (c != adm_clauses.size()-1) process << " & ";
     }
-    process << ";\n";
+    process << ");\n";
 
     process << "\tin1 := !x" << arg << ";\n";
 
@@ -95,13 +95,38 @@ void ExternalLtlSolver::formula(const AF & af, const int arg, ofstream & process
         }
         process << ";\n";
     }
-    process << "\tadmr := ";
+    process << "\tadmr := (";
     for (uint32_t c = 0; c < adm_clauses_r.size(); c++) {
         process << "d" << c;
         if (c != adm_clauses_r.size()-1) process << " & ";
     }
-    process << ";\n";
+    process << ");\n";
 
+
+    // superset of X
+    for(int i = 1; i <= af.args; i++) {
+        process << "\te" << i << " := ";
+        process << "!x" << i << " | " << "x" << 2*af.args + i << "!x" << af.args + i << " | " << "x" << 3*af.args + i << ";\n";
+    }
+    process << "\tmax1 := ";
+    for(int i = 1; i <= af.args; i++) {
+        process << "e" << i;
+        if (i != af.args) {
+            process << " & ";
+        }
+    }
+    process << ";\n";
+    process << "\tmax2 := ";
+    for(int i = 1; i <= af.args; i++) {
+        process << "(!x" << af.args + i << " | " << "x" << i << ")";
+        if (i != af.args) {
+            process " & ";
+        }
+    }
+    process ";\n";
+
+    process << "\tsat := !adm | x" << arg << " | (admr & max1 & max2 & x" << arg << ");\n";
+    /*
     // Non-empty clause - reduct
     vector<int> ne_clause = Encodings::add_nonempty(af, true);
     process << "\tner := ";
@@ -141,7 +166,8 @@ void ExternalLtlSolver::formula(const AF & af, const int arg, ofstream & process
     }
     process << ";\n";
 
-    process << "\tsat := adm & in1 & (!admr | !ner | !red);\n";
+    process << "\tsat := !adm | x" << arg << "| (admr & ner & red & x" << arg << ");\n";
+    */
 }
 
 void ExternalLtlSolver::main(const AF & af, ofstream & process) {
