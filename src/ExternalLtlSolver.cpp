@@ -34,8 +34,6 @@ void ExternalLtlSolver::addClause(std::vector<int> & clause) {
 int ExternalLtlSolver::solve(const AF & af, const int arg) {
     ofstream process;
     process.open("encoding.tmp");
-    exists(process);
-    forall(process);
     formula(af, arg, process);
     main(af, process);
     process.close();
@@ -44,151 +42,142 @@ int ExternalLtlSolver::solve(const AF & af, const int arg) {
 }
 
 void ExternalLtlSolver::formula(const AF & af, const int arg, ofstream & process) {
-    process << "\nMODULE formula(";
-    for (uint32_t i = 1; i <= 4*af.args-1; i++) {
-        process << "x" << i << ",";
-    }
-    process << "x" << 4*af.args;
-
-    process << ")\n\nDEFINE\n";
-
-    // ADM Clauses
-    auto adm_clauses = Encodings::add_admissible(af, false);
-    for (uint32_t c = 0; c < adm_clauses.size(); c++) {
-        auto clause = adm_clauses[c];
-        process << "\tc" << c << " := ";
-        for (uint32_t i = 0; i < clause.size(); i++) {
-            if (clause[i] > 0) {
-                process << "x" << clause[i];
-            } else {
-                process << "!x" << abs(clause[i]);
-            }
-            if (i != clause.size() - 1) {
-                process << " | ";
-            }
+    // expand
+    for (int i = 1; i <= af.args; i++) {
+        process << "\te" << i << " := (";
+        for (int j = 0; j < i; j++) {
+            process << "X ";
         }
-        process << ";\n";
+        process << "a" << i << " -> G (send -> )";
+        for (int j = 0; j < i; j++) {
+            process << "X ";
+        }
+        process << "a" << i << "));\n";
     }
-    process << "\tadm := ";
-    for (uint32_t c = 0; c < adm_clauses.size(); c++) {
-        process << "c" << c;
-        if (c != adm_clauses.size()-1) process << " & ";
+    process << "\texpand := ";
+    for (int i = 1; i <= af.args; i++) {
+        process << "e" << i;
+        if (i!=af.args) process << " & ";
     }
     process << ";\n";
 
-    process << "\tin1 := !x" << arg << ";\n";
-
-    // ADM clauses - reduct
-    auto adm_clauses_r = Encodings::add_admissible(af, true);
-    for (uint32_t c = 0; c < adm_clauses_r.size(); c++) {
-        auto clause = adm_clauses_r[c];
-        process << "\td" << c << " := ";
-        for (uint32_t i = 0; i < clause.size(); i++) {
-            if (clause[i] > 0) {
-                process << "x" << clause[i];
-            } else {
-                process << "!x" << abs(clause[i]);
-            }
-            if (i != clause.size() - 1) {
-                process << " | ";
-            }
+    // expand_str
+    for (int i = 1; i <= af.args; i++) {
+        process << "\tg" << i << " := (";
+        for (int j = 0; j < i; j++) {
+            process << "X ";
         }
-        process << ";\n";
+        process << "!a" << i << " -> F (send & )";
+        for (int j = 0; j < i; j++) {
+            process << "X ";
+        }
+        process << "a" << i << "));\n";
     }
-    process << "\tadmr := ";
-    for (uint32_t c = 0; c < adm_clauses_r.size(); c++) {
-        process << "d" << c;
-        if (c != adm_clauses_r.size()-1) process << " & ";
+    process << "\texpand_str := ";
+    for (int i = 1; i <= af.args; i++) {
+        process << "g" << i;
+        if (i!=af.args) process << " & ";
     }
     process << ";\n";
 
-    // Non-empty clause - reduct
-    vector<int> ne_clause = Encodings::add_nonempty(af, true);
-    process << "\tner := ";
-    for (uint32_t i = 0; i < ne_clause.size(); i++) {
-        if (ne_clause[i] > 0) {
-            process << "x" << ne_clause[i];
-        } else {
-            process << "!x" << abs(ne_clause[i]);
+    // all_inner
+    for (int i = 1; i <= af.args; i++) {
+        for (int j = i+1; j <= af.args; j++) {
+            process << "\th" << i << " := (";
+            for (int k = 0; k < i; k++) {
+                process << "X ";
+            }
+            process << "!a" << i << " & ";
+            for (int k = 0; k < j; k++) {
+                process << "X ";
+            }
+            process << "!a" << j << ") -> F (send & (";
+            for (int k = 0; k < i; k++) {
+                process << "X ";
+            }
+            process << "a" << i << " & ";
+            for (int k = 0; k < j; k++) {
+                process << "X ";
+            }
+            process << "!a" << j << ")) & (F (send & (";
+            for (int k = 0; k < i; k++) {
+                process << "X ";
+            }
+            process << "!a" << i << " & ";
+            for (int k = 0; k < j; k++) {
+                process << "X ";
+            }
+            process << "a" << j << ")) & F (send & (";
+            for (int k = 0; k < i; k++) {
+                process << "X ";
+            }
+            process << "a" << i << " & ";
+            for (int k = 0; k < j; k++) {
+                process << "X ";
+            }
+            process << "a" << j << "));\n";
         }
-        if (i != ne_clause.size() - 1) {
-            process << " | ";
-        }
+    }
+    process << "\tall_inner := ";
+    for (int i = 1; i <= af.args; i++) {
+        process << "h" << i;
+        if (i!=af.args) process << " & ";
     }
     process << ";\n";
 
-    // Reduct clauses
-    auto reduct_clauses = Encodings::add_reduct(af);
-    for (uint32_t c = 0; c < reduct_clauses.size(); c++) {
-        auto clause = reduct_clauses[c];
-        process << "\te" << c << " := ";
-        for (uint32_t i = 0; i < clause.size(); i++) {
-            if (clause[i] > 0) {
-                process << "x" << clause[i];
-            } else {
-                process << "!x" << abs(clause[i]);
-            }
-            if (i != clause.size() - 1) {
-                process << " | ";
-            }
-        }
-        process << ";\n";
-    }
-    process << "\tred := ";
-    for (uint32_t c = 0; c < reduct_clauses.size(); c++) {
-        process << "e" << c;
-        if (c != reduct_clauses.size()-1) process << " & ";
-    }
-    process << ";\n";
+    //all_ex_path
+    process << "\tall_ex_path := G (send -> all_inner);\n";
 
-    process << "\tsat := adm & in1 & (!admr | !ner | !red);\n";
+    //ex_non_add
+    for (int i = 1; i <= af.args; i++) {
+        //TODO
+    }
+
+    // skeptical preferred
+    process << "\tformula := (cf & self_defending & expand & expand_str & all_ex_path & ex_non_add) -> ";
+    for (int k = 0; k < arg; k++) {
+        process << "X ";
+    }
+    process << "a" << arg << ";\n";
 }
 
 void ExternalLtlSolver::main(const AF & af, ofstream & process) {
-    process << "\nMODULE main\n\n";
+    process << "\nMODULE main\n";
     process << "VAR\n";
-    process << "\t\tx" << 4*af.args << "\t: forall(clauses.sat);\n";
-    for (int v = 4*af.args-1; v > 2*af.args; v--) {
-        process << "\t\tx" << v << "\t: forall(x" << v+1 << ".carry-out);\n";
+    for (int a = 1; a <= af.args; a++) {
+        process << "\t\ta" << a << "\t: boolean;\n";
     }
-    process << "\t\tx" << 2*af.args << "\t: exists(x" << 2*af.args+1 << ".carry-out);\n";
-    for (int v = 2*af.args-1; v > 0; v--) {
-        process << "\t\tx" << v << "\t: exists(x" << v+1 << ".carry-out);\n";
+    process << "\t\tstate\t: {";
+    for (int v = 1; v <= af.args; v++) {
+        process << "v" << v << ",";
     }
-    process << "clauses\t: formula(";
-    process << "x1.value";
-    for (int x = 2; x <= 4*af.args; x++) {
-        process << ",x" << x << ".value";
+    for (int f = 1; f <= af.args; f++) {
+        process << "f" << f << ",";
     }
-    process << ");\n";
-    process << "SPEC AF (!clauses.sat)\n";
-}
+    process << "send};\n\n";
 
-void ExternalLtlSolver::forall(ofstream & process) {
-    process << "\nMODULE forall(carry-in)\n";
-    process << "VAR\n";
-    process << "    value : boolean;\n";
     process << "ASSIGN\n";
-    process << "    init (value) := FALSE;\n";
-    process << "    next (value) := value & carry-in;\n";
-    process << "DEFINE\n";
-    process << "    carry-out := value & carry-in;\n";
+    process << "\tinit(state) := send;\n\n";
+    process << "\tnext(state) := case\n";
+    for (int v = 1; v < af.args; v++) {
+        process << "\t\tstate = v" << v << " | state = f" << v << " :\t{v" << v+1 << ",f" << v+1 << "};\n";
+    }
+    process << "\t\tstate = v" << af.args << " | state = f" << af.args << " :\tsend;\n";
+    process << "\t\tstate = send : {v1,f1};\n";
+    process << "esac;\n\n";
+
+    for (int a = 1; a <= af.args; a++) {
+        process << "\tinit(a" << a << ") := FALSE;\n";
+    }
+
+    process << "\n\tnext(ai) := case // 1 <= i <= n\n";
+    process << "\t\tnext(state) = vi : TRUE;\n";
+    process << "\t\tTRUE : FALSE;\n";
+    process << "esac;\n\n";
+
+    process << "LTLSPEC <>";
 }
 
-
-void ExternalLtlSolver::exists(ofstream & process) {
-    process << "\nMODULE exists(carry-in)\n";
-    process << "VAR\n";
-    process << "    value : boolean;\n";
-    process << "ASSIGN\n";
-    process << "    init (value) := {FALSE,TRUE};\n";
-    process << "    next (value) :=\n";
-    process << "      case\n";
-    process << "        carry-in : {FALSE,TRUE};\n";
-    process << "        TRUE     : value;\n";
-    process << "      esac;\n";
-    process << "DEFINE carry-out := carry-in;\n";
-}
 
 void ExternalLtlSolver::free() {
     clauses.clear();

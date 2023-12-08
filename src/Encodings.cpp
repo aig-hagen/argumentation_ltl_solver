@@ -17,6 +17,15 @@ vector<int> add_nonempty(const AF & af, bool reduct) {
 	return clause;
 }
 
+vector<vector<int>> add_conflict_free(const AF & af) {
+	vector<vector<int>> clauses;
+	for (int i = 1; i <= af.args; i++) {
+		for (int j = 0; j < af.attackers[i].size(); j++) {
+			vector<int> clause = { i, -j };
+		}
+	}
+}
+
 vector<vector<int>> add_admissible(const AF & af, bool reduct) {
 	vector<vector<int>> clauses;
 	int base = 0;
