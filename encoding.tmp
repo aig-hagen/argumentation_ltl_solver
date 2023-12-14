@@ -1,66 +1,42 @@
-
-MODULE exists(carry-in)
-VAR
-    value : boolean;
-ASSIGN
-    init (value) := {FALSE,TRUE};
-    next (value) :=
-      case
-        carry-in : {FALSE,TRUE};
-        TRUE     : value;
-      esac;
-DEFINE carry-out := carry-in;
-
-MODULE forall(carry-in)
-VAR
-    value : boolean;
-ASSIGN
-    init (value) := FALSE;
-    next (value) := value & carry-in;
-DEFINE
-    carry-out := value & carry-in;
-
-MODULE formula(x1,x2,x3,x4,x5,x6,x7,x8)
-
-DEFINE
-	c0 := !x3 | !x1;
-	c1 := !x3;
-	c2 := !x4 | !x2;
-	c3 := x4 | !x1;
-	c4 := !x2 | !x1;
-	c5 := x1 | !x4;
-	c6 := !x2 | x3;
-	adm := c0 & c1 & c2 & c3 & c4 & c5 & c6;
-	d0 := !x7 | !x5;
-	d1 := !x7;
-	d2 := !x8 | !x6;
-	d3 := x8 | !x5;
-	d4 := !x6 | !x5;
-	d5 := x5 | !x8;
-	d6 := !x6 | x7;
-	admr := d0 & d1 & d2 & d3 & d4 & d5 & d6;
-	ner := x5 | x6;
-	e0 := !x5 | !x1;
-	e1 := !x7 | !x1;
-	e2 := !x5 | !x3;
-	e3 := !x7 | !x3;
-	e4 := !x6 | !x2;
-	e5 := !x8 | !x2;
-	e6 := !x6 | !x4;
-	e7 := !x8 | !x4;
-	red := e0 & e1 & e2 & e3 & e4 & e5 & e6 & e7;
-	sat := !adm | x1 | (admr & ner & red);
+	cf0 := (X X !a2 | X !a1);
+	cf := (cf0);
+	sd1 := (X a1);
+	sd2 := (X X a2 -> (() & ));
+	self_defending := (sd1 & sd2);
+	adm := cf & self_defending;
+	e1 := (X a1 -> G (send -> X a1));
+	e2 := (X X a2 -> G (send -> X X a2));
+	expand := e1 & e2;
+	g1 := (X !a1 -> F (send & X a1));
+	g2 := (X X !a2 -> F (send & X X a2));
+	expand_str := g1 & g2;
+	h1 := (X !a1 & X X !a2) -> F (send & (X a1 & X X !a2)) & F (send & (X !a1 & X X a2)) & F (send & (X a1 & X X a2));
+	all_inner := h1 & h2;
+	all_ex_path := G (send -> all_inner);
+	ex_non_add(ai) := (X X X G (send -> !adm));
+	formula := (adm & expand & expand_str & all_ex_path & ex_non_add) -> X a1;
 
 MODULE main
-
 VAR
-		x8	: exists(clauses.sat);
-		x7	: exists(x8.carry-out);
-		x6	: exists(x7.carry-out);
-		x5	: exists(x6.carry-out);
-		x4	: forall(x5.carry-out);
-		x3	: forall(x4.carry-out);
-		x2	: forall(x3.carry-out);
-		x1	: forall(x2.carry-out);
-clauses	: formula(x1.value,x2.value,x3.value,x4.value,x5.value,x6.value,x7.value,x8.value);
-LTLSPEC F (!clauses.sat)
+		a1	: boolean;
+		a2	: boolean;
+		state	: {v1,v2,f1,f2,send};
+
+ASSIGN
+	init(state) := send;
+
+	next(state) := case
+		state = v1 | state = f1 :	{v2,f2};
+		state = v2 | state = f2 :	send;
+		state = send : {v1,f1};
+esac;
+
+	init(a1) := FALSE;
+	init(a2) := FALSE;
+
+	next(ai) := case // 1 <= i <= n
+		next(state) = vi : TRUE;
+		TRUE : FALSE;
+esac;
+
+LTLSPEC <>

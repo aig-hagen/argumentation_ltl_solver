@@ -22,8 +22,22 @@ vector<vector<int>> add_conflict_free(const AF & af) {
 	for (int i = 1; i <= af.args; i++) {
 		for (int j = 0; j < af.attackers[i].size(); j++) {
 			vector<int> clause = { i, -j };
+			clauses.push_back(clause);
 		}
 	}
+	return clauses;
+}
+
+
+vector<vector<int>> add_self_defending(const AF & af) {// TODO
+	vector<vector<int>> clauses;
+	for (int i = 1; i <= af.args; i++) {
+		for (int j = 0; j < af.attackers[i].size(); j++) {
+			vector<int> clause = { i, -j };
+			clauses.push_back(clause);
+		}
+	}
+	return clauses;
 }
 
 vector<vector<int>> add_admissible(const AF & af, bool reduct) {

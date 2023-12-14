@@ -42,13 +42,72 @@ int ExternalLtlSolver::solve(const AF & af, const int arg) {
 }
 
 void ExternalLtlSolver::formula(const AF & af, const int arg, ofstream & process) {
+    // conflict-free
+    int cf_clauses=0;
+    for (int i = 1; i <= af.args; i++) {
+		for (int j = 0; j < af.attackers[i].size(); j++) {
+            process << "\tcf" << cf_clauses << " := (";
+            for (int x = 0; x < i; x++) {
+                process << "X ";
+            }
+            process << "!a" << i << " | ";
+            for (int x = 0; x < af.attackers[i][j]; x++) {
+                process << "X ";
+            }
+            process << "!a" << af.attackers[i][j] << ");\n";
+            cf_clauses++;
+		}
+	}
+    process << "\tcf := (";
+    for (int i = 0; i < cf_clauses; i++) {
+        process << "cf" << i;
+        if (i!=cf_clauses-1) process << " | ";
+    }
+    process << ");\n";
+
+    for (int i = 1; i <= af.args; i++) {
+        process << "\tsd" << i << " := (";
+        for (int x = 0; x < i; x++) {
+            process << "X ";
+        }
+        process << "a" << i;
+        if (af.attackers[i].size()==0) {
+            process << ");\n";
+            continue;
+        }
+        process << " -> (";
+        for (int j = 0; j < af.attackers[i].size(); j++) {
+            process << "(";
+            for (int k = 0; k < af.attackers[j].size(); k++) {
+                for (int x = 0; x < k; x++) {
+                    process << "X ";
+                }
+                process << "a" << k;
+                if (k != af.attackers[j].size()) process << " | ";
+            }
+            process << ")";
+            if (j != af.attackers[i].size()) process << " & ";
+        }
+        process << ")";
+        if (i!=af.args) process << " & ";
+    }
+    process << ");\n";
+    process << "\tself_defending := (";
+    for (int x = 1; x <= af.args; x++) {
+        process << "sd" << x;
+        if (x!=af.args) process << " & ";
+    }
+    process << ");\n";
+
+    process << "\tadm := cf & self_defending;\n";
+    
     // expand
     for (int i = 1; i <= af.args; i++) {
         process << "\te" << i << " := (";
         for (int j = 0; j < i; j++) {
             process << "X ";
         }
-        process << "a" << i << " -> G (send -> )";
+        process << "a" << i << " -> G (send -> ";
         for (int j = 0; j < i; j++) {
             process << "X ";
         }
@@ -67,7 +126,7 @@ void ExternalLtlSolver::formula(const AF & af, const int arg, ofstream & process
         for (int j = 0; j < i; j++) {
             process << "X ";
         }
-        process << "!a" << i << " -> F (send & )";
+        process << "!a" << i << " -> F (send & ";
         for (int j = 0; j < i; j++) {
             process << "X ";
         }
@@ -99,7 +158,7 @@ void ExternalLtlSolver::formula(const AF & af, const int arg, ofstream & process
             for (int k = 0; k < j; k++) {
                 process << "X ";
             }
-            process << "!a" << j << ")) & (F (send & (";
+            process << "!a" << j << ")) & F (send & (";
             for (int k = 0; k < i; k++) {
                 process << "X ";
             }
@@ -129,12 +188,14 @@ void ExternalLtlSolver::formula(const AF & af, const int arg, ofstream & process
     process << "\tall_ex_path := G (send -> all_inner);\n";
 
     //ex_non_add
-    for (int i = 1; i <= af.args; i++) {
-        //TODO
+    process << "\tex_non_add(ai) := (";
+    for (int k = 0; k < af.args+1; k++) {
+        process << "X ";
     }
+    process << "G (send -> !adm));\n";
 
     // skeptical preferred
-    process << "\tformula := (cf & self_defending & expand & expand_str & all_ex_path & ex_non_add) -> ";
+    process << "\tformula := (adm & expand & expand_str & all_ex_path & ex_non_add) -> ";
     for (int k = 0; k < arg; k++) {
         process << "X ";
     }
