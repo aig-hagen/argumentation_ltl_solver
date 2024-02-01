@@ -42,6 +42,17 @@ int ExternalLtlSolver::solve(const AF & af, const int arg) {
 }
 
 void ExternalLtlSolver::formula(const AF & af, const int arg, ofstream & process) {
+    process << "MODULE formula(";
+    for (int i = 1; i <= af.args; i++) {
+        process << "a" << i;
+        if (i!=af.args) {
+            process << ",";
+        }
+        
+
+    }
+    process << ")\n"
+    
     // conflict-free
     int cf_clauses=0;
     for (int i = 1; i <= af.args; i++) {
@@ -65,6 +76,7 @@ void ExternalLtlSolver::formula(const AF & af, const int arg, ofstream & process
     }
     process << ");\n";
 
+    // self-defending
     for (int i = 1; i <= af.args; i++) {
         process << "\tsd" << i << " := (";
         for (int x = 0; x < i; x++) {
