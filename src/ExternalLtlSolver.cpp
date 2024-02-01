@@ -51,7 +51,7 @@ void ExternalLtlSolver::formula(const AF & af, const int arg, ofstream & process
         
 
     }
-    process << ")\n"
+    process << ")\nDEFINE\n";
     
     // conflict-free
     int cf_clauses=0;
@@ -207,7 +207,7 @@ void ExternalLtlSolver::formula(const AF & af, const int arg, ofstream & process
     process << "G (send -> !adm));\n";
 
     // skeptical preferred
-    process << "\tformula := (adm & expand & expand_str & all_ex_path & ex_non_add) -> ";
+    process << "\tf := (adm & expand & expand_str & all_ex_path & ex_non_add) -> ";
     for (int k = 0; k < arg; k++) {
         process << "X ";
     }
