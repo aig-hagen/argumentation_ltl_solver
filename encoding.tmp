@@ -1,7 +1,9 @@
+MODULE formula(a1,a2)
+DEFINE
 	cf0 := (X X !a2 | X !a1);
 	cf := (cf0);
 	sd1 := (X a1);
-	sd2 := (X X a2 -> (() & ));
+	sd2 := (X X a2);
 	self_defending := (sd1 & sd2);
 	adm := cf & self_defending;
 	e1 := (X a1 -> G (send -> X a1));
@@ -21,6 +23,7 @@ VAR
 		a1	: boolean;
 		a2	: boolean;
 		state	: {v1,v2,f1,f2,send};
+		clauses	: formula(a1,a2);
 
 ASSIGN
 	init(state) := send;
@@ -39,4 +42,4 @@ esac;
 		TRUE : FALSE;
 esac;
 
-LTLSPEC <>
+LTLSPEC F (clauses.f)

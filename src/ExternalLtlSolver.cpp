@@ -87,20 +87,32 @@ void ExternalLtlSolver::formula(const AF & af, const int arg, ofstream & process
             process << ");\n";
             continue;
         }
-        process << " -> (";
+        bool no_defenders = true;
         for (int j = 0; j < af.attackers[i].size(); j++) {
-            process << "(";
-            for (int k = 0; k < af.attackers[j].size(); k++) {
-                for (int x = 0; x < k; x++) {
-                    process << "X ";
+            if (af.attackers[j].size()!=0) {
+                no_defenders = false;
+                break;
+            }
+        }
+        
+        if (no_defenders) {
+            process << ");\n";
+        } else {
+            process << " -> (";
+            for (int j = 0; j < af.attackers[i].size(); j++) {
+                process << "(";
+                for (int k = 0; k < af.attackers[j].size(); k++) {
+                    for (int x = 0; x < k; x++) {
+                        process << "X ";
+                    }
+                    process << "a" << k;
+                    if (k != af.attackers[j].size()) process << " | ";
                 }
-                process << "a" << k;
-                if (k != af.attackers[j].size()) process << " | ";
+                process << ")";
+                if (j != af.attackers[i].size()) process << " & ";
             }
             process << ")";
-            if (j != af.attackers[i].size()) process << " & ";
         }
-        process << ")";
         if (i!=af.args) process << " & ";
     }
     process << ");\n";
@@ -227,7 +239,16 @@ void ExternalLtlSolver::main(const AF & af, ofstream & process) {
     for (int f = 1; f <= af.args; f++) {
         process << "f" << f << ",";
     }
-    process << "send};\n\n";
+    process << "send};\n";
+    process << "\tclauses: formula(";
+    for (int i = 1; i < af.args; i++) {
+        process << "a" << i;
+        if (i!=af.args) {
+            process << ","
+        }
+    }
+    
+    process << ");\n\n;
 
     process << "ASSIGN\n";
     process << "\tinit(state) := send;\n\n";
@@ -248,7 +269,7 @@ void ExternalLtlSolver::main(const AF & af, ofstream & process) {
     process << "\t\tTRUE : FALSE;\n";
     process << "esac;\n\n";
 
-    process << "LTLSPEC <>";
+    process << "LTLSPEC clauses";
 }
 
 
